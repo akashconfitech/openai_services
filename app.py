@@ -125,6 +125,12 @@ def upload_pdf():
 def greet():
     return("Hello Welcome to Confitech AI")
 
+@app.route('/success', methods = ['POST'])   
+def success():   
+    if request.method == 'POST':   
+        f = request.files['file'] 
+        return(f.filename)
+
 
 # Run the Flask app
 if __name__ == '__main__':
