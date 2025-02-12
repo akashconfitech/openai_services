@@ -128,7 +128,7 @@ def extract_text_from_pdf(pdf_path):
     return text
 
 # Route to handle PDF upload and query OpenAI API
-@app.route('/upload', methods=['POST'])
+@app.route('/upload')
 def upload_pdf():
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
