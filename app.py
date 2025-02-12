@@ -121,7 +121,7 @@ def upload_pdf():
     except Exception as e:
         return jsonify({'error': f"Error processing data: {str(e)}"}), 500
 
-@app.route('/upload', methods=['POST'])
+@app.route('/', methods=['GET'])
 def greet():
     return("Hello Welcome to Confitech AI")
 
