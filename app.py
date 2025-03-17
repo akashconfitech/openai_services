@@ -3,10 +3,10 @@ import fitz  # PyMuPDF
 from openai import AzureOpenAI
 from flask import Flask, request, jsonify
 import json
-
+from flask_cors import CORS
 # Initialize the Flask app
 app = Flask(__name__)
-
+CORS(app)  # Handle CORS
 # Azure OpenAI Client Initialization
 client = AzureOpenAI(
     api_key="3c3384effe084ff3b56101ab0c1d14df",
