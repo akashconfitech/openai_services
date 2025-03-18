@@ -81,6 +81,71 @@ def extractInvoiceDetailsOpenAI(content):
         print(f"Error in OpenAI API call: {e}")
         return None
 
+
+
+def extractInvoiceHighlightsOpenAI(content):
+    print('Sending request to extract invoice Highlights')
+
+    # Modify the system message to guide the model on what to do
+    chat_prompt = [{
+        "role": "system",
+        "content": [
+            {
+                "type": "text",
+                "text": """You are an AI assistant that helps extract invoice details. Given an invoice data converted from a PDF, extract the following insights and return the output in Crisp Bullet Points. 
+                Insights to be Extracted.
+                1. Product having highest quantities from the Invoice.
+                2. Most Valuable product in the Invoice.
+                3. Total Bill Value is more than 5000
+                
+                
+
+                Make sure to format your response as a Bullet Points Below.
+                Example :
+                Most Selling Product :
+                Most Valuable Product :
+                Bill value more than 5000 : True/ False 
+
+                JUST RETURN ONLY IF YOU FIND THE DATA, DO NOT MAKE UP YOUR ANSWER , DO NOT ANSWER ANYTHING OUT OF CONTEXT}"""
+            }
+        ]
+    }]
+    
+    # Add the invoice content to the user message
+    messages = chat_prompt + [{
+        "role": "user",
+        "content": content
+    }]
+    
+    # Make the API call to OpenAI GPT-4 model
+    completion = client.chat.completions.create(  
+        model=deployment_name,
+        messages=messages,
+        max_tokens=3000,  
+        temperature=0.1,  
+        top_p=0.95,  
+        frequency_penalty=0,  
+        presence_penalty=0,
+        stop=None,  
+        stream=False
+    )
+    return (completion.choices[0].message.content)
+    #Extract response and print as JSON
+    # try:
+    #     # Accessing the message content from the response
+    #     json_response = completion.choices[0].message.content
+        
+    #     # Parse the response as JSON
+    #     import json
+    #     parsed_json = json.loads(json_response)
+    #     return parsed_json
+    # except Exception as e:
+    #     print(f"Error parsing response: {e}")
+    #     return None
+
+
+
+
 # Route to handle PDF upload and query OpenAI API
 @app.route('/upload', methods=['POST'])
 def upload_pdf():
@@ -131,6 +196,31 @@ def success():
         f = request.files['file'] 
         return(f.filename)
 
+@app.route('/getinsights', methods=['POST'])
+def getinsights():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+    
+    # Save the file temporarily
+    pdf_path = os.path.join('uploads', file.filename)
+    os.makedirs('uploads', exist_ok=True)
+    file.save(pdf_path)
+    
+    # Extract text from the PDF
+    pdf_text = extract_text_from_pdf(pdf_path)
+    
+    # Send the extracted text to OpenAI API to fetch details (e.g., summary)
+    try:
+        data=extractInvoiceHighlightsOpenAI(pdf_text)
+        # json_str = data.strip().replace("```json\n", "").replace("\n```", "")
+        # parsed_json = json.loads(json_str)
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # Run the Flask app
 if __name__ == '__main__':
