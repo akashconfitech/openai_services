@@ -268,8 +268,8 @@ def getinsights():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/getAllExtractedFields', methods=['POST'])
-def getAllExtractedFields():
+@app.route('/masterfields', methods=['POST'])
+def getmasterfields():
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
     
@@ -277,22 +277,37 @@ def getAllExtractedFields():
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
     
+    # Ensure the file is a PDF
+    if not file.filename.lower().endswith('.pdf'):
+        return jsonify({'error': 'Only PDF files are allowed'}), 400
+    
+    # Create an uploads folder if it doesn't exist
+    if not os.path.exists(app.config['UPLOAD_FOLDER']):
+        os.makedirs(app.config['UPLOAD_FOLDER'])
+
     # Save the file temporarily
-    pdf_path = os.path.join('uploads', file.filename)
-    os.makedirs('uploads', exist_ok=True)
+    pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
     file.save(pdf_path)
     
     # Extract text from the PDF
-    pdf_text = extract_text_from_pdf(pdf_path)
-    
-    # Send the extracted text to OpenAI API to fetch details (e.g., summary)
     try:
-        data=allFieldsExtractor(pdf_text)
-        # json_str = data.strip().replace("```json\n", "").replace("\n```", "")
-        # parsed_json = json.loads(json_str)
-        return jsonify(data)
+        pdf_text = extract_text_from_pdf(pdf_path)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': f"Error extracting text from PDF: {str(e)}"}), 500
+    
+    # Send the extracted text to OpenAI API to fetch details
+    try:
+        data = allFieldsExtractor(pdf_text)
+        if data:
+            json_str = data.strip().replace("```json\n", "").replace("\n```", "")
+            parsed_json = json.loads(json_str)
+            return jsonify(parsed_json)
+        else:
+            return jsonify({'error': 'No valid response from OpenAI'}), 500
+    except Exception as e:
+        return jsonify({'error': f"Error processing data: {str(e)}"}), 500
+
+
 
 # Run the Flask app
 if __name__ == '__main__':
