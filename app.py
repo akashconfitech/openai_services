@@ -29,6 +29,52 @@ def extract_text_from_pdf(pdf_path):
         text += page.get_text()
     return text
 
+
+
+
+def allFieldsExtractor(content):
+    print('Sending request to extract invoice details')
+
+    chat_prompt = [{
+        "role": "system",
+        "content": [
+            {
+                "type": "text",
+                "text": """You are an AI assistant that helps extract invoice details. Given an invoice data converted from a PDF, extraxt all the details from the Invoice and return the output in valid JSON format. 
+                The output should consists of all the important values from the PDF extatacted and also return the line items from the invoice.
+                Make sure to format your response as a JSON object.
+                JUST RETURN THE JSON DATA"""
+            }
+        ]
+    }]
+
+    messages = chat_prompt + [{
+        "role": "user",
+        "content": content
+    }]
+    
+    # API call to OpenAI GPT-4 model
+    try:
+        completion = client.chat.completions.create(
+            model=deployment_name,
+            messages=messages,
+            max_tokens=3000,
+            temperature=0.1,
+            top_p=0.95,
+            frequency_penalty=0,
+            presence_penalty=0,
+            stop=None,
+            stream=False
+        )
+        return completion.choices[0].message.content
+    except Exception as e:
+        print(f"Error in OpenAI API call: {e}")
+        return None
+
+
+
+
+
 # Function to extract invoice details using OpenAI
 def extractInvoiceDetailsOpenAI(content):
     print('Sending request to extract invoice details')
@@ -216,6 +262,32 @@ def getinsights():
     # Send the extracted text to OpenAI API to fetch details (e.g., summary)
     try:
         data=extractInvoiceHighlightsOpenAI(pdf_text)
+        # json_str = data.strip().replace("```json\n", "").replace("\n```", "")
+        # parsed_json = json.loads(json_str)
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/getAllExtractedFields', methods=['POST'])
+def getAllExtractedFields():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+    
+    # Save the file temporarily
+    pdf_path = os.path.join('uploads', file.filename)
+    os.makedirs('uploads', exist_ok=True)
+    file.save(pdf_path)
+    
+    # Extract text from the PDF
+    pdf_text = extract_text_from_pdf(pdf_path)
+    
+    # Send the extracted text to OpenAI API to fetch details (e.g., summary)
+    try:
+        data=allFieldsExtractor(pdf_text)
         # json_str = data.strip().replace("```json\n", "").replace("\n```", "")
         # parsed_json = json.loads(json_str)
         return jsonify(data)
