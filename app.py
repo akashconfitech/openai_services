@@ -40,7 +40,8 @@ def allFieldsExtractor(content):
         "content": [
             {
                 "type": "text",
-                "text": """You are an AI assistant that helps extract invoice details. Given an invoice data converted from a PDF, extraxt all the details from the Invoice and return the output in valid JSON format. 
+                "text": """You are an AI assistant that helps extract invoice details. Given an invoice data converted from a PDF, extraxt all the details from the Invoice and return the output in valid JSON format.
+                The Invoice data can be English or Arabic. So return accordingly.
                 The output should consists of all the important values from the PDF extatacted and also return the line items from the invoice.
                 Make sure to format your response as a JSON object.
                 JUST RETURN THE JSON DATA"""
