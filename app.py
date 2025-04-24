@@ -311,97 +311,97 @@ def getmasterfields():
         return jsonify({'error': f"Error processing data: {str(e)}"}), 500
 
 
-from flask import Flask, request, Response, jsonify
-from flask import Flask, request, Response, jsonify
-from flask_cors import CORS
-from azure.core.credentials import AzureKeyCredential
-from azure.search.documents import SearchClient
-from openai import AzureOpenAI
+# from flask import Flask, request, Response, jsonify
+# from flask import Flask, request, Response, jsonify
+# from flask_cors import CORS
+# from azure.core.credentials import AzureKeyCredential
+# from azure.search.documents import SearchClient
+# from openai import AzureOpenAI
 
 
-# ======================= Configuration ==========================
-AZURE_SEARCH_ENDPOINT = "https://confitechaisearch.search.windows.net"
-AZURE_SEARCH_KEY = "f0UZU9eHkSnK5MW3rtuQS8qK8BQboHtfgPPXv5CHiNAzSeDSzCGg"
-AZURE_SEARCH_INDEX = "confitechindex"
+# # ======================= Configuration ==========================
+# AZURE_SEARCH_ENDPOINT = "https://confitechaisearch.search.windows.net"
+# AZURE_SEARCH_KEY = "f0UZU9eHkSnK5MW3rtuQS8qK8BQboHtfgPPXv5CHiNAzSeDSzCGg"
+# AZURE_SEARCH_INDEX = "confitechindex"
 
-AZURE_OPENAI_ENDPOINT = "https://sauga-m9v6tumo-eastus2.cognitiveservices.azure.com/"
-AZURE_OPENAI_KEY = "32obHSutgHYfCst8XyDi2vKUv0VcWnV7wfznAGMQIl3njYHU1wJIJQQJ99BDACHYHv6XJ3w3AAAAACOGAimG"
-AZURE_OPENAI_DEPLOYMENT = "gpt-35-turbo"
-AZURE_API_VERSION = "2024-12-01-preview"
-# ======================= Initialization ==========================
-def init_openai_client():
-    return AzureOpenAI(
-        api_key=AZURE_OPENAI_KEY,
-        api_version=AZURE_API_VERSION,
-        azure_endpoint=AZURE_OPENAI_ENDPOINT,
-    )
+# AZURE_OPENAI_ENDPOINT = "https://sauga-m9v6tumo-eastus2.cognitiveservices.azure.com/"
+# AZURE_OPENAI_KEY = "32obHSutgHYfCst8XyDi2vKUv0VcWnV7wfznAGMQIl3njYHU1wJIJQQJ99BDACHYHv6XJ3w3AAAAACOGAimG"
+# AZURE_OPENAI_DEPLOYMENT = "gpt-35-turbo"
+# AZURE_API_VERSION = "2024-12-01-preview"
+# # ======================= Initialization ==========================
+# def init_openai_client():
+#     return AzureOpenAI(
+#         api_key=AZURE_OPENAI_KEY,
+#         api_version=AZURE_API_VERSION,
+#         azure_endpoint=AZURE_OPENAI_ENDPOINT,
+#     )
 
-def init_search_client():
-    return SearchClient(
-        endpoint=AZURE_SEARCH_ENDPOINT,
-        index_name=AZURE_SEARCH_INDEX,
-        credential=AzureKeyCredential(AZURE_SEARCH_KEY)
+# def init_search_client():
+#     return SearchClient(
+#         endpoint=AZURE_SEARCH_ENDPOINT,
+#         index_name=AZURE_SEARCH_INDEX,
+#         credential=AzureKeyCredential(AZURE_SEARCH_KEY)
 
 
-openai_client = init_openai_client()
-search_client = init_search_client()
+# openai_client = init_openai_client()
+# search_client = init_search_client()
 
-# ======================= Utilities ==========================
-def search_documents(query, top_k=5):
-    results = search_client.search(query, top=top_k)
-    return "\n\n".join([doc["content"] for doc in results])
-# =======================  API Endpoint  ==========================
+# # ======================= Utilities ==========================
+# def search_documents(query, top_k=5):
+#     results = search_client.search(query, top=top_k)
+#     return "\n\n".join([doc["content"] for doc in results])
+# # =======================  API Endpoint  ==========================
 
-def build_prompt(context, question):
-    return [
-        {
-            "role": "system",
-            "content": (
-                "You are a friendly and professional assistant for Confitech Solutions, "
-                "a company specializing in AI, consulting, and IT services. Answer queries related to "
-                "Confitech's services like AI solutions, data analytics, cloud consulting, etc. "
-                "Use the context from the documents in the Azure Search index to answer the user's query. "
-                "DO NOT ANSWER OUTSIDE OF THE PROVIDED CONTEXT. KEEP ANSWERS INFORMATIVE AND PRECISE."
-            )
-        },
-        {
-            "role": "user",
-            "content": f"Context:\n{context}\n\nQuestion:\n{question}"
-        }
-    ]
+# def build_prompt(context, question):
+#     return [
+#         {
+#             "role": "system",
+#             "content": (
+#                 "You are a friendly and professional assistant for Confitech Solutions, "
+#                 "a company specializing in AI, consulting, and IT services. Answer queries related to "
+#                 "Confitech's services like AI solutions, data analytics, cloud consulting, etc. "
+#                 "Use the context from the documents in the Azure Search index to answer the user's query. "
+#                 "DO NOT ANSWER OUTSIDE OF THE PROVIDED CONTEXT. KEEP ANSWERS INFORMATIVE AND PRECISE."
+#             )
+#         },
+#         {
+#             "role": "user",
+#             "content": f"Context:\n{context}\n\nQuestion:\n{question}"
+#         }
+#     ]
 
-def stream_chat_response(messages):
-    try:
-        response = openai_client.chat.completions.create(
-            model=AZURE_OPENAI_DEPLOYMENT,
-            messages=messages,
-            max_tokens=3000,
-            temperature=0.1,
-            top_p=0.95,
-            frequency_penalty=0,
-            presence_penalty=0,
-            stream=True
-        )
-        for chunk in response:
-            if chunk.choices:
-                content = chunk.choices[0].delta.content
-                if content:
-                    yield content
-    except Exception as e:
-        yield f"[ERROR]: {str(e)}"
+# def stream_chat_response(messages):
+#     try:
+#         response = openai_client.chat.completions.create(
+#             model=AZURE_OPENAI_DEPLOYMENT,
+#             messages=messages,
+#             max_tokens=3000,
+#             temperature=0.1,
+#             top_p=0.95,
+#             frequency_penalty=0,
+#             presence_penalty=0,
+#             stream=True
+#         )
+#         for chunk in response:
+#             if chunk.choices:
+#                 content = chunk.choices[0].delta.content
+#                 if content:
+#                     yield content
+#     except Exception as e:
+#         yield f"[ERROR]: {str(e)}"
 
-@app.route("/chat", methods=["POST"])
-def chat_stream():
-    data = request.get_json()
-    user_query = data.get("query")
+# @app.route("/chat", methods=["POST"])
+# def chat_stream():
+#     data = request.get_json()
+#     user_query = data.get("query")
 
-    if not user_query:
-        return jsonify({"error": "Query not provided"}), 400
+#     if not user_query:
+#         return jsonify({"error": "Query not provided"}), 400
 
-    context = search_documents(user_query)
-    messages = build_prompt(context, user_query)
+#     context = search_documents(user_query)
+#     messages = build_prompt(context, user_query)
 
-    return Response(stream_chat_response(messages), mimetype="text/plain")
+#     return Response(stream_chat_response(messages), mimetype="text/plain")
 
 
 # Run the Flask app
