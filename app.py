@@ -339,6 +339,7 @@ def init_search_client():
         endpoint=AZURE_SEARCH_ENDPOINT,
         index_name=AZURE_SEARCH_INDEX,
         credential=AzureKeyCredential(AZURE_SEARCH_KEY)
+    )
 
 
 
