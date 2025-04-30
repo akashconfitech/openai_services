@@ -428,7 +428,8 @@ def leftbrain_build_prompt(context, question):
                 "a company specializing in building customized portfolios for their Clients with a comprehensive offering that adjusts to ever-changing markets through services including active portfolio management, along with tax and retirement planning, to help you build your wealth.. Answer queries related to "
                 "Brain Wealth Management like Portfolio Management, Securities Evaluation Application, Jarvis. Left Brain Contact No is 8009300378."
                 "Use the context from the documents in the Azure Search index to answer the user's query. "
-                "DO NOT ANSWER OUTSIDE OF THE PROVIDED CONTEXT. KEEP ANSWERS INFORMATIVE AND PRECISE."
+                "DO NOT ANSWER OUTSIDE OF THE PROVIDED CONTEXT , JUST SAY Contact https://leftbrainwm.com IF YOU CANT ANSWER ANYTHING."
+                "KEEP ANSWERS INFORMATIVE AND PRECISE."
             )
         },
         {
