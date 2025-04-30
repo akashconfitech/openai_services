@@ -321,7 +321,7 @@ def getmasterfields():
 AZURE_SEARCH_ENDPOINT = "https://confitechaisearch.search.windows.net"
 AZURE_SEARCH_KEY = "f0UZU9eHkSnK5MW3rtuQS8qK8BQboHtfgPPXv5CHiNAzSeDSzCGg"
 AZURE_SEARCH_INDEX = "confitechindex"
-
+leftbrain_AZURE_SEARCH_INDEX="leftbrainwmindex"
 AZURE_OPENAI_ENDPOINT = "https://sauga-m9v6tumo-eastus2.cognitiveservices.azure.com/"
 AZURE_OPENAI_KEY = "32obHSutgHYfCst8XyDi2vKUv0VcWnV7wfznAGMQIl3njYHU1wJIJQQJ99BDACHYHv6XJ3w3AAAAACOGAimG"
 AZURE_OPENAI_DEPLOYMENT = "gpt-35-turbo"
@@ -401,6 +401,52 @@ def chat_stream():
 
     context = search_documents(user_query)
     messages = build_prompt(context, user_query)
+
+    return Response(stream_chat_response(messages), mimetype="text/plain")
+
+
+
+def leftbrain_init_search_client():
+    return SearchClient(
+        endpoint=AZURE_SEARCH_ENDPOINT,
+        index_name=leftbrain_AZURE_SEARCH_INDEX,
+        credential=AzureKeyCredential(AZURE_SEARCH_KEY)
+    )
+# ======================= Utilities ==========================
+def leftbrain_search_documents(query, top_k=5):
+    search_client = leftbrain_init_search_client()
+    results = search_client.search(query, top=top_k)
+    return "\n\n".join([doc["content"] for doc in results])
+
+
+def leftbrain_build_prompt(context, question):
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are a friendly and professional assistant for Left Brain Wealth Management, "
+                "a company specializing in building customized portfolios for their Clients with a comprehensive offering that adjusts to ever-changing markets through services including active portfolio management, along with tax and retirement planning, to help you build your wealth.. Answer queries related to "
+                "Brain Wealth Management like Portfolio Management, Securities Evaluation Application, Jarvis. "
+                "Use the context from the documents in the Azure Search index to answer the user's query. "
+                "DO NOT ANSWER OUTSIDE OF THE PROVIDED CONTEXT. KEEP ANSWERS INFORMATIVE AND PRECISE."
+            )
+        },
+        {
+            "role": "user",
+            "content": f"Context:\n{context}\n\nQuestion:\n{question}"
+        }
+    ]
+
+@app.route("/leftbrainchat", methods=["POST"])
+def leftbrain_chat_stream():
+    data = request.get_json()
+    user_query = data.get("query")
+
+    if not user_query:
+        return jsonify({"error": "Query not provided"}), 400
+
+    context = leftbrain_search_documents(user_query)
+    messages = leftbrain_build_prompt(context, user_query)
 
     return Response(stream_chat_response(messages), mimetype="text/plain")
 
