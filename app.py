@@ -64,7 +64,7 @@ def allFieldsExtractor(content):
             model=deployment_name,
             messages=messages,
             max_tokens=3000,
-            temperature=0.1,
+            temperature=0.3,
             top_p=0.95,
             frequency_penalty=0,
             presence_penalty=0,
