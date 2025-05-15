@@ -6,6 +6,9 @@ from flask_cors import CORS
 from flask import Flask, request, Response, jsonify
 from azure.core.credentials import AzureKeyCredential
 from azure.search.documents import SearchClient
+import pytesseract
+from PIL import Image
+from werkzeug.utils import secure_filename
 # Initialize the Flask app
 app = Flask(__name__)
 CORS(app)  # Handle CORS
@@ -21,6 +24,10 @@ deployment_name = 'gpt-4'
 # Configurations for file upload
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Max file size of 16 MB
+ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # Helper function to extract text from PDF
 def extract_text_from_pdf(pdf_path):
@@ -195,39 +202,41 @@ def extractInvoiceHighlightsOpenAI(content):
     #     return None
 
 
-
-
-# Route to handle PDF upload and query OpenAI API
+# Route to handle PDF or image upload
 @app.route('/upload', methods=['POST'])
-def upload_pdf():
+def upload_file():
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
-    
+
     file = request.files['file']
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
-    
-    # Ensure the file is a PDF
-    if not file.filename.lower().endswith('.pdf'):
-        return jsonify({'error': 'Only PDF files are allowed'}), 400
-    
-    # Create an uploads folder if it doesn't exist
+
+    if not allowed_file(file.filename):
+        return jsonify({'error': 'Only PDF or image files are allowed'}), 400
+
+    # Ensure upload folder exists
     if not os.path.exists(app.config['UPLOAD_FOLDER']):
         os.makedirs(app.config['UPLOAD_FOLDER'])
 
-    # Save the file temporarily
-    pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-    file.save(pdf_path)
-    
-    # Extract text from the PDF
+    # Save file securely
+    filename = secure_filename(file.filename)
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    file.save(file_path)
+
     try:
-        pdf_text = extract_text_from_pdf(pdf_path)
+        # Check file type
+        if filename.lower().endswith('.pdf'):
+            extracted_text = extract_text_from_pdf(file_path)
+        else:
+            image = Image.open(file_path)
+            extracted_text = pytesseract.image_to_string(image)
     except Exception as e:
-        return jsonify({'error': f"Error extracting text from PDF: {str(e)}"}), 500
-    
-    # Send the extracted text to OpenAI API to fetch details
+        return jsonify({'error': f'Error extracting text: {str(e)}'}), 500
+
+    # Send text to OpenAI
     try:
-        data = extractInvoiceDetailsOpenAI(pdf_text)
+        data = extractInvoiceDetailsOpenAI(extracted_text)
         if data:
             json_str = data.strip().replace("```json\n", "").replace("\n```", "")
             parsed_json = json.loads(json_str)
@@ -235,7 +244,47 @@ def upload_pdf():
         else:
             return jsonify({'error': 'No valid response from OpenAI'}), 500
     except Exception as e:
-        return jsonify({'error': f"Error processing data: {str(e)}"}), 500
+        return jsonify({'error': f'Error processing data: {str(e)}'}), 500
+
+# # Route to handle PDF upload and query OpenAI API
+# @app.route('/upload', methods=['POST'])
+# def upload_pdf():
+#     if 'file' not in request.files:
+#         return jsonify({'error': 'No file part'}), 400
+    
+#     file = request.files['file']
+#     if file.filename == '':
+#         return jsonify({'error': 'No selected file'}), 400
+    
+#     # Ensure the file is a PDF
+#     if not file.filename.lower().endswith('.pdf'):
+#         return jsonify({'error': 'Only PDF files are allowed'}), 400
+    
+#     # Create an uploads folder if it doesn't exist
+#     if not os.path.exists(app.config['UPLOAD_FOLDER']):
+#         os.makedirs(app.config['UPLOAD_FOLDER'])
+
+#     # Save the file temporarily
+#     pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+#     file.save(pdf_path)
+    
+#     # Extract text from the PDF
+#     try:
+#         pdf_text = extract_text_from_pdf(pdf_path)
+#     except Exception as e:
+#         return jsonify({'error': f"Error extracting text from PDF: {str(e)}"}), 500
+    
+#     # Send the extracted text to OpenAI API to fetch details
+#     try:
+#         data = extractInvoiceDetailsOpenAI(pdf_text)
+#         if data:
+#             json_str = data.strip().replace("```json\n", "").replace("\n```", "")
+#             parsed_json = json.loads(json_str)
+#             return jsonify(parsed_json)
+#         else:
+#             return jsonify({'error': 'No valid response from OpenAI'}), 500
+#     except Exception as e:
+#         return jsonify({'error': f"Error processing data: {str(e)}"}), 500
 
 @app.route('/', methods=['GET'])
 def greet():
