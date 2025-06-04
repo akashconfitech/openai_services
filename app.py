@@ -500,6 +500,80 @@ def leftbrain_chat_stream():
 
     return Response(stream_chat_response(messages), mimetype="text/plain")
 
+#AddressParser
+# Azure OpenAI Configuration
+client_address = AzureOpenAI(
+    api_key="3c3384effe084ff3b56101ab0c1d14df",  # ⚠️ Replace with environment variable in production
+    api_version="2024-05-01-preview",
+    azure_endpoint="https://confitech.openai.azure.com/"
+)
+deployment_name_for_address = "gpt-4"
+
+@app.route('/parse-address', methods=['POST'])
+def parse_address():
+    data = request.get_json()
+    unstructured_address = data.get("address")
+
+    if not unstructured_address:
+        return jsonify({"error": "Address is required"}), 400
+
+    # Chat prompt for OpenAI
+    prompt = [
+        {
+            "role": "system",
+            "content": [{
+                "type": "text",
+                "text": """
+You are a helpful assistant that extracts address components from unstructured input and formats them using the ISO 20022 standard.
+
+Respond ONLY with a valid JSON object, nothing else.
+
+Return a JSON with the following fields:
+- Dept
+- SubDept
+- StrtNm
+- BldgNb
+- BldgNm
+- Flr
+- PstBx
+- Room
+- PstCd
+- TwnNm
+- TwnLctnNm
+- DstrctNm
+- CtrySubDvsn
+- Ctry
+
+If data is missing, set the value to null. Do not include explanations or any text outside JSON.
+"""
+            }]
+        },
+        {
+            "role": "user",
+            "content": unstructured_address
+        }
+    ]
+
+    try:
+        response = client_address.chat.completions.create(
+            model=deployment_name_for_address,
+            messages=prompt,
+            max_tokens=1000,
+            temperature=0.2
+        )
+        result = response.choices[0].message.content.strip()
+
+        # Extract only the JSON object
+        match = re.search(r'\{.*\}', result, re.DOTALL)
+        if not match:
+            raise ValueError("No JSON object found in the response.")
+
+        structured_address = json.loads(match.group())
+        return jsonify({"structured_address": structured_address})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 # Run the Flask app
 if __name__ == '__main__':
