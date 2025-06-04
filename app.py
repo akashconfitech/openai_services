@@ -9,6 +9,7 @@ from azure.search.documents import SearchClient
 import pytesseract
 from PIL import Image
 from werkzeug.utils import secure_filename
+import re
 # Initialize the Flask app
 app = Flask(__name__)
 CORS(app)  # Handle CORS
