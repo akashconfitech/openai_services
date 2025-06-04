@@ -576,6 +576,85 @@ If data is missing, set the value to null. Do not include explanations or any te
         return jsonify({"error": str(e)}), 500
 
 
+
+
+# =============== Portfolio-Specific Client ===============
+def init_portfolio_openai_client():
+    return AzureOpenAI(
+        api_key="3c3384effe084ff3b56101ab0c1d14df",  # 🔒 Replace with env var in production
+        api_version="2024-05-01-preview",
+        azure_endpoint="https://confitech.openai.azure.com/"
+    )
+
+PORTFOLIO_OPENAI_DEPLOYMENT = "gpt-4"
+
+# =============== Streaming Response Generator ===============
+def stream_portfolio_chat_response(portfolio_messages):
+    try:
+        client = init_portfolio_openai_client()
+        response = client.chat.completions.create(
+            model=PORTFOLIO_OPENAI_DEPLOYMENT,
+            messages=portfolio_messages,
+            max_tokens=1000,
+            temperature=0.3,
+            stream=True
+        )
+
+        for chunk in response:
+            if chunk.choices:
+                content = chunk.choices[0].delta.content
+                if content:
+                    yield content
+    except Exception as e:
+        yield f"[ERROR]: {str(e)}"
+
+# =============== Prompt Builder ============================
+def build_portfolio_prompt_for_chat_natural(table_data, question):
+    return [
+        {
+            "role": "system",
+            "content": """
+You are a financial data assistant that answers questions strictly based on the provided JSON table of stocks or bonds.
+
+You can:
+- Read and interpret tabular data in JSON format
+- Perform basic calculations like average, sum, min, max, and filtering
+- Compare values across rows
+- Parse semicolon-separated fields like "EPS Next Year Estimate Trends"
+- Provide concise, clear, and insightful answers in a natural, conversational style, like a helpful chatbot.
+
+Use **only** the provided data — do NOT add any external info or make assumptions.
+
+Keep answers crisp, engaging, and story-like but factual.
+
+If the data is insufficient to answer, reply:
+"I'm sorry, but the data provided doesn't have enough information to answer that."
+
+Avoid long explanations or irrelevant commentary.
+"""
+        },
+        {
+            "role": "user",
+            "content": f"Here is the data:\n{json.dumps(table_data)}\n\nQuestion:\n{question}"
+        }
+    ]
+
+
+# =============== Route: Portfolio Query Streaming ================
+@app.route("/portfolio/query-stream", methods=["POST"])
+def stream_portfolio_query_response():
+    data = request.get_json()
+    table_data = data.get("table_data")
+    question = data.get("question")
+
+    if not table_data or not question:
+        return jsonify({"error": "Both 'table_data' and 'question' are required."}), 400
+
+    messages = build_portfolio_prompt_for_chat_natural(table_data, question)
+    return Response(stream_portfolio_chat_response(messages), mimetype="text/plain")
+
+
+
 # Run the Flask app
 if __name__ == '__main__':
     app.run(debug=True)
