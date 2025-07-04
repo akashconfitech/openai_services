@@ -10,6 +10,7 @@ import pytesseract
 from PIL import Image
 from werkzeug.utils import secure_filename
 import re
+import pycountry
 # Initialize the Flask app
 app = Flask(__name__)
 CORS(app)  # Handle CORS
@@ -509,7 +510,67 @@ client_address = AzureOpenAI(
     azure_endpoint="https://confitech.openai.azure.com/"
 )
 deployment_name_for_address = "gpt-4"
+# Max length for each field
+MAX_LENGTHS = {
+    "Dept": 70,
+    "SubDept": 70,
+    "StrtNm": 70,
+    "BldgNb": 16,
+    "BldgNm": 35,
+    "Flr": 70,
+    "PstBx": 16,
+    "Room": 70,
+    "PstCd": 16,
+    "TwnNm": 35,
+    "TwnLctnNm": 35,
+    "DstrctNm": 35,
+    "CtrySubDvsn": 35,
+    "Ctry": 2  # ISO country code
+}
 
+# Required fields for scoring
+REQUIRED_FIELDS = ["TwnNm", "Ctry"]
+
+def validate_country(value):
+    country = None
+    try:
+        country = pycountry.countries.lookup(value)
+    except:
+        return None
+    return country.alpha_2  # Return the 2-letter ISO code
+
+def clean_and_score(structured_data):
+    issues = []
+    score = 1.0
+
+    cleaned = {}
+    for field, max_len in MAX_LENGTHS.items():
+        value = structured_data.get(field)
+
+        if value is None:
+            cleaned[field] = None
+        else:
+            value = str(value).strip()
+
+            # Country field special case
+            if field == "Ctry":
+                iso_code = validate_country(value)
+                if iso_code:
+                    cleaned[field] = iso_code
+                else:
+                    cleaned[field] = None
+                    issues.append(f"Invalid country value: '{value}'")
+            else:
+                cleaned[field] = value[:max_len] if len(value) > max_len else value
+
+    for field in REQUIRED_FIELDS:
+        if not cleaned.get(field):
+            score -= 0.5
+            issues.append(f"Missing or invalid required field: {field}")
+
+    score = max(score, 0.0)
+    return cleaned, score, issues
+    
 @app.route('/parse-address', methods=['POST'])
 def parse_address():
     data = request.get_json()
@@ -518,7 +579,7 @@ def parse_address():
     if not unstructured_address:
         return jsonify({"error": "Address is required"}), 400
 
-    # Chat prompt for OpenAI
+    # OpenAI prompt
     prompt = [
         {
             "role": "system",
@@ -564,13 +625,18 @@ If data is missing, set the value to null. Do not include explanations or any te
         )
         result = response.choices[0].message.content.strip()
 
-        # Extract only the JSON object
         match = re.search(r'\{.*\}', result, re.DOTALL)
         if not match:
             raise ValueError("No JSON object found in the response.")
 
-        structured_address = json.loads(match.group())
-        return jsonify({"structured_address": structured_address})
+        structured_data = json.loads(match.group())
+        cleaned_data, score, issues = clean_and_score(structured_data)
+
+        return jsonify({
+            "structured_address": cleaned_data,
+            "score": score,
+            "issues": issues
+        })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
