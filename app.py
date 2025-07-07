@@ -606,6 +606,7 @@ Return a JSON with the following fields:
 - CtrySubDvsn
 - Ctry
 
+DO NOT CREATE YOUR OWN VALUES KEEP IT NULL IF ITS NOT GIVEN THE ADDRESS
 If data is missing, set the value to null. Do not include explanations or any text outside JSON.
 """
             }]
@@ -621,7 +622,7 @@ If data is missing, set the value to null. Do not include explanations or any te
             model=deployment_name_for_address,
             messages=prompt,
             max_tokens=1000,
-            temperature=0.2
+            temperature=0.1
         )
         result = response.choices[0].message.content.strip()
 
