@@ -606,7 +606,7 @@ Return a JSON with the following fields:
 - CtrySubDvsn
 - Ctry
 
-DO NOT CREATE YOUR OWN VALUES KEEP IT NULL IF ITS NOT GIVEN THE ADDRESS
+
 If data is missing, set the value to null. Do not include explanations or any text outside JSON.
 """
             }]
