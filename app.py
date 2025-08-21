@@ -721,6 +721,55 @@ def stream_portfolio_query_response():
     return Response(stream_portfolio_chat_response(messages), mimetype="text/plain")
 
 
+
+#=================Route: DMS Chatbot===========
+DMS_AZURE_SEARCH_INDEX = "dmsindex"
+
+def dms_init_search_client():
+    return SearchClient(
+        endpoint=AZURE_SEARCH_ENDPOINT,
+        index_name=DMS_AZURE_SEARCH_INDEX,
+        credential=AzureKeyCredential(AZURE_SEARCH_KEY)
+    )
+
+def dms_search_documents(query, top_k=5):
+    search_client = dms_init_search_client()
+    results = search_client.search(query, top=top_k)
+    return "\n\n".join([doc["content"] for doc in results])
+
+def dms_build_prompt(context, question):
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are a helpful and professional assistant for DMS (Document Management System). "
+                "You answer user queries related to document search, metadata, retrieval, and insights strictly "
+                "based on the indexed data in Azure AI Search. "
+                "Do not hallucinate. Stay concise, informative, and within the provided context."
+            )
+        },
+        {
+            "role": "user",
+            "content": f"Context:\n{context}\n\nQuestion:\n{question}"
+        }
+    ]
+
+@app.route("/dmschat", methods=["POST"])
+def dms_chat_stream():
+    data = request.get_json()
+    user_query = data.get("query")
+
+    if not user_query:
+        return jsonify({"error": "Query not provided"}), 400
+
+    context = dms_search_documents(user_query)
+    messages = dms_build_prompt(context, user_query)
+
+    return Response(stream_chat_response(messages), mimetype="text/plain")
+
+
+
+
 # Run the Flask app
 if __name__ == '__main__':
     app.run(debug=True)
