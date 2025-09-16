@@ -248,6 +248,108 @@ def upload_file():
     except Exception as e:
         return jsonify({'error': f'Error processing data: {str(e)}'}), 500
 
+
+
+# Function to extract claim details using OpenAI
+def extractClaimDetailsOpenAI(content):
+    print('Sending request to extract Claim details')
+
+    chat_prompt = [{
+        "role": "system",
+        "content": [
+            {
+                "type": "text",
+                "text": """You are an AI assistant that helps extract Insurance Claim details. Given an Claim data converted from a PDF, extract the following details and return the output in valid JSON format. 
+                FIELDS TO EXTRACT ARE : 
+                1. Member Name
+                2. Name
+                3. Policy Number
+                4. Membership No
+                5. Age
+                6. Relation
+                7. Enrolment Date
+                8. Enrolment From Date
+                9. Enrolment To Date
+                10. Treatment Department
+                11. Receive Date
+                12. Service Date
+                13. Contact Number 1
+                14. Contact Number 2
+                JUST RETURN THE JSON DATA"""
+            }
+        ]
+    }]
+
+    messages = chat_prompt + [{
+        "role": "user",
+        "content": content
+    }]
+    
+    # API call to OpenAI GPT-4 model
+    try:
+        completion = client.chat.completions.create(
+            model=deployment_name,
+            messages=messages,
+            max_tokens=3000,
+            temperature=0.1,
+            top_p=0.95,
+            frequency_penalty=0,
+            presence_penalty=0,
+            stop=None,
+            stream=False
+        )
+        return completion.choices[0].message.content
+    except Exception as e:
+        print(f"Error in OpenAI API call: {e}")
+        return None
+
+
+
+@app.route('/claimupload', methods=['POST'])
+def claim_upload_file():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+
+    if not allowed_file(file.filename):
+        return jsonify({'error': 'Only PDF or image files are allowed'}), 400
+
+    # Ensure upload folder exists
+    if not os.path.exists(app.config['UPLOAD_FOLDER']):
+        os.makedirs(app.config['UPLOAD_FOLDER'])
+
+    # Save file securely
+    filename = secure_filename(file.filename)
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    file.save(file_path)
+
+    try:
+        # Check file type
+        if filename.lower().endswith('.pdf'):
+            extracted_text = extract_text_from_pdf(file_path)
+        else:
+            image = Image.open(file_path)
+            extracted_text = pytesseract.image_to_string(image)
+    except Exception as e:
+        return jsonify({'error': f'Error extracting text: {str(e)}'}), 500
+
+    # Send text to OpenAI
+    try:
+        data = extractClaimDetailsOpenAI(extracted_text)
+        if data:
+            json_str = data.strip().replace("```json\n", "").replace("\n```", "")
+            parsed_json = json.loads(json_str)
+            return jsonify(parsed_json)
+        else:
+            return jsonify({'error': 'No valid response from OpenAI'}), 500
+    except Exception as e:
+        return jsonify({'error': f'Error processing data: {str(e)}'}), 500
+
+
+
 # # Route to handle PDF upload and query OpenAI API
 # @app.route('/upload', methods=['POST'])
 # def upload_pdf():
