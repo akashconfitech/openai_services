@@ -588,7 +588,6 @@ def leftbrain_build_prompt(context, question):
                 "ALWAYS include this PDF link at the end of your answer:\n"
                 "   https://leftbrainwm.com/pdf/Nolands_Notes_2025%20(V3).pdf\n"
                 "2. For all other questions, DO NOT include any links in your answer.\n"
-                "3. Do not hallucinate. If the answer is not found in the context, politely say so.\n"
                 "4. Left Brain Wealth Management contact number is 8009300378.\n"
             )
         },
