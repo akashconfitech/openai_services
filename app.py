@@ -582,7 +582,10 @@ def leftbrain_build_prompt(context, question):
                 "Brain Wealth Management like Portfolio Management, Securities Evaluation Application, Jarvis. Left Brain Contact No is 8009300378."
                 "Use the context from the documents in the Azure Search index to answer the user's query. "
                 ""
-                "KEEP ANSWERS INFORMATIVE AND PRECISE. SPECIAL INSTRUCTIONS: IF ANY QUESTION IS BASED ON NOLAND's NOTE ,ADD THE PDF LINK WITH THE ANSWER https://leftbrainwm.com/pdf/Nolands_Notes_2025%20(V3).pdf"
+                "KEEP ANSWERS INFORMATIVE AND PRECISE. 
+                SPECIAL INSTRUCTIONS: 
+                1. IF ANY QUESTION IS BASED ON NOLAND's NOTE ,ADD THE PDF LINK WITH THE ANSWER https://leftbrainwm.com/pdf/Nolands_Notes_2025%20(V3).pdf
+                2. DO NOT ADD LINKS FOR ANSWERS APART FROM NOLANDS NOTE"
             )
         },
         {
